@@ -10,6 +10,15 @@ supabase = create_client(os.environ['SUPABASE_URL'], os.environ['SUPABASE_SERVIC
 openai = OpenAI(api_key=os.environ['OPENAI_API_KEY'])
 wiki = wikipediaapi.Wikipedia('politician-rag/1.0', 'en')
 
+# Verify OpenAI API works before doing anything
+print("Verifying OpenAI API...")
+try:
+  test = openai.embeddings.create(model='text-embedding-3-small', input='test')
+  print("OpenAI API OK")
+except Exception as e:
+  print(f"OpenAI API failed: {e}")
+  exit(1)
+
 POLITICIANS = [
   {'name': 'Bernie Sanders', 'party': 'Democrat'},
   {'name': 'Donald Trump', 'party': 'Republican'},
@@ -31,7 +40,13 @@ def embed(text):
 
 for p in POLITICIANS:
   print(f"Ingesting {p['name']}...")
-  
+
+  # Check if politician already exists
+  existing = supabase.table('politicians').select('*').eq('name', p['name']).execute().data
+  if existing:
+    print(f"Skipping {p['name']} — already exists")
+    continue
+
   # Insert politician
   page = wiki.page(p['name'])
   pol = supabase.table('politicians').insert({
@@ -54,7 +69,7 @@ for p in POLITICIANS:
       'content': chunk,
       'embedding': embedding
     }).execute()
-  
+
   print(f"Done — {len(chunks)} chunks inserted")
 
 print("Ingestion complete")
