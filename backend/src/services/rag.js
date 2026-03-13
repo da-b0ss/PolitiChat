@@ -5,11 +5,14 @@ import 'dotenv/config'
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
 export async function embedText(text) {
-  const res = await openai.embeddings.create({
-    model: 'text-embedding-3-small',
-    input: text
+  const res = await fetch('http://localhost:5001/embed', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text })
   })
-  return res.data[0].embedding
+  if (!res.ok) throw new Error(`Embed server error: ${res.status}`)
+  const { embedding } = await res.json()
+  return embedding
 }
 
 export async function retrieveChunks(embedding, politicianId) {

@@ -1,22 +1,23 @@
 import wikipediaapi
 import os
-from openai import OpenAI
+from sentence_transformers import SentenceTransformer
 from supabase import create_client
 from dotenv import load_dotenv
 
 load_dotenv('../backend/.env')
 
 supabase = create_client(os.environ['SUPABASE_URL'], os.environ['SUPABASE_SERVICE_KEY'])
-openai = OpenAI(api_key=os.environ['OPENAI_API_KEY'])
 wiki = wikipediaapi.Wikipedia('politician-rag/1.0', 'en')
 
-# Verify OpenAI API works before doing anything
-print("Verifying OpenAI API...")
+# Verify embedding model loads before touching the database
+print("Loading embedding model...")
 try:
-  test = openai.embeddings.create(model='text-embedding-3-small', input='test')
-  print("OpenAI API OK")
+  model = SentenceTransformer('all-MiniLM-L6-v2')
+  test = model.encode('test')
+  assert test.shape == (384,)
+  print("Embedding model OK")
 except Exception as e:
-  print(f"OpenAI API failed: {e}")
+  print(f"Embedding model failed: {e}")
   exit(1)
 
 POLITICIANS = [
@@ -35,8 +36,7 @@ def chunk_text(text, size=500, overlap=50):
   return chunks
 
 def embed(text):
-  res = openai.embeddings.create(model='text-embedding-3-small', input=text)
-  return res.data[0].embedding
+  return model.encode(text).tolist()
 
 for p in POLITICIANS:
   print(f"Ingesting {p['name']}...")
