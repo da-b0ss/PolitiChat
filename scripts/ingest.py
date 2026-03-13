@@ -1,5 +1,6 @@
 import wikipediaapi
 import os
+import spacy
 from sentence_transformers import SentenceTransformer
 from supabase import create_client
 from dotenv import load_dotenv
@@ -20,12 +21,23 @@ except Exception as e:
   print(f"Embedding model failed: {e}")
   exit(1)
 
+# Load spaCy NER model
+print("Loading NER model...")
+try:
+  nlp = spacy.load('en_core_web_sm')
+  print("NER model OK")
+except Exception as e:
+  print(f"NER model failed: {e}")
+  exit(1)
+
 POLITICIANS = [
   {'name': 'Bernie Sanders', 'party': 'Democrat'},
   {'name': 'Donald Trump', 'party': 'Republican'},
   {'name': 'Ron Paul', 'party': 'Republican'},
   {'name': 'Alexandria Ocasio-Cortez', 'party': 'Democrat'},
 ]
+
+NER_LABELS = {'PERSON', 'ORG', 'GPE', 'DATE'}
 
 def chunk_text(text, size=500, overlap=50):
   words = text.split()
@@ -37,6 +49,18 @@ def chunk_text(text, size=500, overlap=50):
 
 def embed(text):
   return model.encode(text).tolist()
+
+def extract_entities(text):
+  doc = nlp(text)
+  seen = set()
+  entities = []
+  for ent in doc.ents:
+    if ent.label_ in NER_LABELS:
+      key = (ent.text, ent.label_)
+      if key not in seen:
+        seen.add(key)
+        entities.append({'text': ent.text, 'label': ent.label_})
+  return entities
 
 for p in POLITICIANS:
   print(f"Ingesting {p['name']}...")
@@ -60,6 +84,9 @@ for p in POLITICIANS:
     'url': page.fullurl
   }).execute().data[0]
 
+  # Extract entities from full article text before chunking
+  entities = extract_entities(page.text)
+
   # Chunk, embed, insert
   chunks = chunk_text(page.text)
   for chunk in chunks:
@@ -67,9 +94,10 @@ for p in POLITICIANS:
     supabase.table('chunks').insert({
       'source_id': source['id'],
       'content': chunk,
-      'embedding': embedding
+      'embedding': embedding,
+      'entities': entities
     }).execute()
 
-  print(f"Done — {len(chunks)} chunks inserted")
+  print(f"Done — {len(chunks)} chunks inserted, {len(entities)} entities extracted")
 
 print("Ingestion complete")

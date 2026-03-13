@@ -21,9 +21,20 @@ const ASK_QUESTION = gql`
         title
         url
       }
+      entities {
+        text
+        label
+      }
     }
   }
 `
+
+const ENTITY_COLORS = {
+  PERSON: '#dbeafe',
+  ORG:    '#dcfce7',
+  GPE:    '#fef9c3',
+  DATE:   '#ede9fe',
+}
 
 export default function App() {
   const [search, setSearch] = useState('')
@@ -79,6 +90,25 @@ export default function App() {
                   {s.title}
                 </a>
               ))}
+              {answerData.askQuestion.entities.length > 0 && (
+                <div style={{ marginTop: 16 }}>
+                  <h4>Entities</h4>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {answerData.askQuestion.entities.map((e, i) => (
+                      <span key={i} style={{
+                        padding: '3px 10px',
+                        borderRadius: 12,
+                        fontSize: 13,
+                        fontWeight: 500,
+                        background: ENTITY_COLORS[e.label] ?? '#e0e0e0',
+                      }}>
+                        {e.text}
+                        <span style={{ marginLeft: 6, fontSize: 11, opacity: 0.7 }}>{e.label}</span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

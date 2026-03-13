@@ -22,7 +22,19 @@ export const resolvers = {
         .select('*')
         .in('id', sourceIds)
 
-      return { answer, sources }
+      const seen = new Set()
+      const entities = []
+      for (const chunk of chunks) {
+        for (const e of (chunk.entities || [])) {
+          const key = `${e.text}:${e.label}`
+          if (!seen.has(key)) {
+            seen.add(key)
+            entities.push(e)
+          }
+        }
+      }
+
+      return { answer, sources, entities }
     }
   }
 }

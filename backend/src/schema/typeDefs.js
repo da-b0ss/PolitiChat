@@ -12,9 +12,15 @@ export const typeDefs = `#graphql
     url: String
   }
 
+  type Entity {
+    text: String!
+    label: String!
+  }
+
   type Answer {
     answer: String!
     sources: [Source!]!
+    entities: [Entity!]!
   }
 
   type Query {
